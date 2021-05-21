@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from flask import Flask, jsonify
 import logging
 from logging.config import fileConfig
@@ -5,9 +7,12 @@ from configparser import ConfigParser
 import os
 import sys
 import csv
+from flask_compress import Compress
 
 
 app = Flask(__name__)
+compress = Compress()
+compress.init_app(app)
 
 
 def readConfig(configFile):
@@ -37,10 +42,18 @@ def configureLogging(configFile):
 
 
 @app.route('/<csvFile>')
-def gerData(csvFile):
-    if os.path.exists(os.path.join('./', csvFile)):
-        with open(os.path.join(parser.get('Global', 'Output_path')), 'r') as infile:
+def getData(csvFile):
+    if os.path.exists(os.path.join(parser.get('Global', 'Output_path'), csvFile + '.csv')):
+        headers = []
+        jsonData = []
+        with open(os.path.join(parser.get('Global', 'Output_path'), csvFile + '.csv'), 'r') as infile:
             csvData = csv.reader(infile)
+            for index, line in enumerate(csvData):
+                if index == 0:
+                    headers = line
+                else:
+                    jsonData.append({str(headers[index].replace('"', '').strip()): str(column.replace('"', '').strip()) for index, column in enumerate(line)})
+        return jsonify(jsonData), 200
     else:
         return {'error': 'File not found'}, 404
 
