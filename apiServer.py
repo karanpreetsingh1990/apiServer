@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from flask import Flask, jsonify
 import logging
 from logging.config import fileConfig
@@ -8,11 +6,11 @@ import os
 import sys
 import csv
 from flask_compress import Compress
+from waitress import serve
 
 
 app = Flask(__name__)
-compress = Compress()
-compress.init_app(app)
+Compress(app)
 
 
 def readConfig(configFile):
@@ -43,22 +41,37 @@ def configureLogging(configFile):
 
 @app.route('/<csvFile>')
 def getData(csvFile):
-    if os.path.exists(os.path.join(parser.get('Global', 'Output_path'), csvFile + '.csv')):
+    if parser.has_section(csvFile):
+        section = csvFile
+        logger.debug('Explicit config section found for {}'.format(csvFile))
+    else:
+        section = 'Global'
+        logger.debug('No section found for {}. Using Global config'.format(csvFile))
+    if os.path.exists(os.path.join(parser.get(section, 'csv_path'), csvFile + '.csv')):
+        logger.debug('CSV file found in the path.')
         headers = []
         jsonData = []
-        with open(os.path.join(parser.get('Global', 'Output_path'), csvFile + '.csv'), 'r') as infile:
+        with open(os.path.join(parser.get(section, 'csv_path'), csvFile + '.csv'), 'r') as infile:
             csvData = csv.reader(infile)
             for index, line in enumerate(csvData):
                 if index == 0:
-                    headers = line
+                    if parser.has_option(section, 'headers'):
+                        logger.debug('Headers found in configuration to be used as JSON keys. Ignoring the first line and using this instead.')
+                        headers = parser.get(section, 'headers').split(',')
+                    else:
+                        logger.debug('Using the first line as headers')
+                        headers = line
                 else:
                     jsonData.append({str(headers[index].replace('"', '').strip()): str(column.replace('"', '').strip()) for index, column in enumerate(line)})
         return jsonify(jsonData), 200
     else:
+        logger.error('File Not found in path.')
         return {'error': 'File not found'}, 404
 
 
 if __name__ == '__main__':
     parser = readConfig('init.conf')
     logger = configureLogging('logging_config.ini')
-    app.run(debug=True, port=5555, host='0.0.0.0')
+    app.secret_key = os.urandom(16)
+    # app.run(debug=True, port=5555, host='0.0.0.0')
+    serve(app, port=parser.get('Global', 'Port'), host='0.0.0.0', url_scheme='https')
