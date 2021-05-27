@@ -7,7 +7,7 @@ This is a very simple Flask API that takes CSV files in the specified path and r
 
 Once run, the API can be accessed from the same machine or another on the network.
 
-> **https://localhost:5555/<csvFile>**
+> **https://<hostname|localhost>:5555/<csvFile>**
 
 It looks for the csv file in the directory specified in the init.conf and tries to return it as a JSON.
 
