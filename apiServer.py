@@ -31,7 +31,7 @@ def readConfig(configFile):
 def configureLogging(configFile):
     try:
         if os.path.exists(os.path.join('./', configFile)):
-            fileConfig('logging_config.ini', disable_existing_loggers=True)
+            fileConfig(os.path.join('./', configFile), disable_existing_loggers=True)
             loggerObj = logging.getLogger()
             return loggerObj
         else:
